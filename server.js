@@ -35,19 +35,19 @@ const dummyUsernames = [
 let players = [];
 let gameStarted = false;
 let castleHealth = {
-    0: 10, // Red team
-    1: 10, // Blue team
-    2: 10, // Green team
-    3: 10  // Yellow team
+    0: 10, // Yellow team (1)
+    1: 10, // Red team (2)
+    2: 10, // Blue team (3)
+    3: 10  // Green team (4)
 };
 let activeCastles = new Set([0, 1, 2, 3]);
 
 // Team colors (constants)
 const TEAM_COLORS = {
-    RED: 0xff0000,    // Red
-    BLUE: 0x0000ff,   // Blue
-    GREEN: 0x00ff00,  // Green
-    YELLOW: 0xffff00  // Yellow
+    YELLOW: 0xffff00,  // Team 0 (Key 1)
+    RED: 0xff0000,     // Team 1 (Key 2)
+    BLUE: 0x0000ff,    // Team 2 (Key 3)
+    GREEN: 0x00ff00    // Team 3 (Key 4)
 };
 
 // Shuffle array randomly
@@ -211,7 +211,7 @@ io.on('connection', (socket) => {
             // Check if game is over
             if (activeCastles.size === 1) {
                 const winningTeam = Array.from(activeCastles)[0];
-                io.emit('gameOver', ['Red', 'Blue', 'Green', 'Yellow'][winningTeam]);
+                io.emit('gameOver', ['Yellow', 'Red', 'Blue', 'Green'][winningTeam]);
                 gameStarted = false;
             }
         }
@@ -241,6 +241,10 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
+http.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`\nAccess from other devices using:`);
+    console.log(`http://192.168.0.52:${PORT}`);
+    console.log(`\nOr use localhost on this machine:`);
+    console.log(`http://localhost:${PORT}`);
 }); 

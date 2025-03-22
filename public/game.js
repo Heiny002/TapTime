@@ -17,6 +17,12 @@ const CLICK_COOLDOWN = 500; // 500ms cooldown between clicks
  * Key 3 (index 2): Blue team view (+Z direction)
  * Key 4 (index 3): Green team view (-X direction)
  * These positions are crucial for gameplay orientation and team perspectives.
+ * 
+ * Team/Position Mapping:
+ * Team 0: Yellow (bottom, -Z)
+ * Team 1: Red (right, +X)
+ * Team 2: Blue (top, +Z)
+ * Team 3: Green (left, -X)
  */
 const cameraPositions = {
     0: { x: 0, y: 10, z: -15 },   // Yellow team (1)
@@ -264,7 +270,7 @@ function createCastles(players) {
         healthBarsContainer.innerHTML = '';
     }
 
-    // Fixed team colors
+    // Fixed team colors - MUST match server's TEAM_COLORS mapping
     const teamColors = {
         0: 0xffff00,  // Yellow (1)
         1: 0xff0000,  // Red (2)
