@@ -9,6 +9,23 @@ app.use(express.static('public'));
 let players = [];
 let gameStarted = false;
 
+// Castle colors and positions
+const CASTLE_CONFIGS = [
+    { color: 0xff0000, position: 0 }, // Red - Top
+    { color: 0x0000ff, position: 1 }, // Blue - Right
+    { color: 0x00ff00, position: 2 }, // Green - Left
+    { color: 0xffff00, position: 3 }  // Yellow - Bottom
+];
+
+// Shuffle array randomly
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
 io.on('connection', (socket) => {
     console.log('A user connected with ID:', socket.id);
 
@@ -40,23 +57,28 @@ io.on('connection', (socket) => {
         
         console.log('Starting game with players:', players);
         gameStarted = true;
-        
-        // Remove any existing bots
-        players = players.filter(p => !p.id.startsWith('bot_'));
-        
-        // Assign the yellow castle (bottom) to the real player
+
+        // First, assign the bottom (yellow) castle to the real player
         players.forEach((player) => {
             if (!player.id.startsWith('bot_')) {
-                player.castle = 3; // Player gets the yellow castle (index 3)
+                player.castle = 3; // Bottom position
                 player.color = 0xffff00; // Yellow color
                 player.health = 10;
             }
         });
 
-        // Add bots for the remaining positions
-        const botColors = [0xff0000, 0x0000ff, 0x00ff00]; // Red, Blue, Green
-        const botPositions = [0, 1, 2]; // Top, Right, Left positions
+        // Create a list of remaining positions for bots (0, 1, 2)
+        let botPositions = [0, 1, 2];
+        let botColors = [0xff0000, 0x0000ff, 0x00ff00]; // Red, Blue, Green
         
+        // Shuffle bot positions and colors together
+        for (let i = botPositions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [botPositions[i], botPositions[j]] = [botPositions[j], botPositions[i]];
+            [botColors[i], botColors[j]] = [botColors[j], botColors[i]];
+        }
+        
+        // Add bots with randomized positions and colors
         botPositions.forEach((position, index) => {
             const botId = `bot_${index}`;
             const botUsername = `Bot ${index + 1}`;
@@ -110,6 +132,14 @@ io.on('connection', (socket) => {
         players = players.filter(player => player.id !== socket.id);
         console.log('Updated players after disconnect:', players);
         io.emit('playerList', players);
+
+        // If all human players have left, end the game
+        const humanPlayers = players.filter(p => !p.id.startsWith('bot_'));
+        if (humanPlayers.length === 0) {
+            gameStarted = false;
+            players = [];
+            io.emit('gameOver', { winner: 'No winner - all players disconnected' });
+        }
     });
 });
 
