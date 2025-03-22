@@ -10,12 +10,20 @@ let players = [];
 let gameStarted = false;
 
 // Castle colors and positions
-const CASTLE_CONFIGS = [
-    { color: 0xff0000, position: 0 }, // Red - Top
-    { color: 0x0000ff, position: 1 }, // Blue - Right
-    { color: 0x00ff00, position: 2 }, // Green - Left
-    { color: 0xffff00, position: 3 }  // Yellow - Bottom
+const CASTLE_COLORS = [
+    0xff0000, // Red
+    0x0000ff, // Blue
+    0x00ff00, // Green
+    0xffff00  // Yellow
 ];
+
+// Fixed castle positions (these never change)
+const CASTLE_POSITIONS = {
+    TOP: 0,
+    RIGHT: 1,
+    LEFT: 2,
+    BOTTOM: 3
+};
 
 // Shuffle array randomly
 function shuffleArray(array) {
@@ -58,28 +66,34 @@ io.on('connection', (socket) => {
         console.log('Starting game with players:', players);
         gameStarted = true;
 
-        // First, assign the bottom (yellow) castle to the real player
-        players.forEach((player) => {
-            if (!player.id.startsWith('bot_')) {
-                player.castle = 3; // Bottom position
-                player.color = 0xffff00; // Yellow color
-                player.health = 10;
-            }
-        });
+        // Get the real player
+        const realPlayer = players.find(p => !p.id.startsWith('bot_'));
+        
+        // Randomly assign a color to the real player
+        const availableColors = [...CASTLE_COLORS];
+        shuffleArray(availableColors);
+        const playerColor = availableColors[0]; // Player gets first random color
+        
+        // Assign the player's color to the bottom castle
+        realPlayer.castle = CASTLE_POSITIONS.BOTTOM;
+        realPlayer.color = playerColor;
+        realPlayer.health = 10;
 
-        // Create a list of remaining positions for bots (0, 1, 2)
-        let botPositions = [0, 1, 2];
-        let botColors = [0xff0000, 0x0000ff, 0x00ff00]; // Red, Blue, Green
+        // Remove the player's color from available colors
+        availableColors.shift();
         
-        // Shuffle bot positions and colors together
-        for (let i = botPositions.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [botPositions[i], botPositions[j]] = [botPositions[j], botPositions[i]];
-            [botColors[i], botColors[j]] = [botColors[j], botColors[i]];
-        }
+        // Create bots for the remaining positions (TOP, RIGHT, LEFT)
+        const remainingPositions = [
+            CASTLE_POSITIONS.TOP,
+            CASTLE_POSITIONS.RIGHT,
+            CASTLE_POSITIONS.LEFT
+        ];
+
+        // Clear existing bots
+        players = players.filter(p => !p.id.startsWith('bot_'));
         
-        // Add bots with randomized positions and colors
-        botPositions.forEach((position, index) => {
+        // Add bots with remaining colors
+        remainingPositions.forEach((position, index) => {
             const botId = `bot_${index}`;
             const botUsername = `Bot ${index + 1}`;
             players.push({
@@ -87,7 +101,7 @@ io.on('connection', (socket) => {
                 username: botUsername,
                 castle: position,
                 health: 10,
-                color: botColors[index]
+                color: availableColors[index]
             });
         });
         
@@ -109,7 +123,25 @@ io.on('connection', (socket) => {
         const alivePlayers = players.filter(p => p.health > 0);
         if (alivePlayers.length === 1) {
             const winner = alivePlayers[0];
-            io.emit('gameOver', { winner: winner.username });
+            // Convert color value to team name
+            let teamName;
+            switch (winner.color) {
+                case 0xff0000: // Red
+                    teamName = "Red Team";
+                    break;
+                case 0x0000ff: // Blue
+                    teamName = "Blue Team";
+                    break;
+                case 0x00ff00: // Green
+                    teamName = "Green Team";
+                    break;
+                case 0xffff00: // Yellow
+                    teamName = "Yellow Team";
+                    break;
+                default:
+                    teamName = "Unknown Team";
+            }
+            io.emit('gameOver', { winner: teamName });
             gameStarted = false;
             players = [];
         }
