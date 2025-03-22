@@ -2,11 +2,40 @@ let socket = io();
 let currentUsername = '';
 let scene, camera, renderer, ground;
 let castles = [];
+let circles = [];
 let healthBars = [];
 let isGameStarted = false;
 let currentPlayer = null;
 let lastClickTime = 0;
 const CLICK_COOLDOWN = 500; // 500ms cooldown between clicks
+
+/*
+ * ⚠️ CRITICAL WARNING ⚠️
+ * The camera positions below are specifically mapped to team views and must not be changed without express consent:
+ * Key 1 (index 0): Yellow team view (-Z direction)
+ * Key 2 (index 1): Red team view (+X direction)
+ * Key 3 (index 2): Blue team view (+Z direction)
+ * Key 4 (index 3): Green team view (-X direction)
+ * These positions are crucial for gameplay orientation and team perspectives.
+ */
+const cameraPositions = {
+    0: { x: 0, y: 10, z: -15 },   // Yellow team (1)
+    1: { x: 15, y: 10, z: 0 },    // Red team (2)
+    2: { x: 0, y: 10, z: 15 },    // Blue team (3)
+    3: { x: -15, y: 10, z: 0 }    // Green team (4)
+};
+
+// Add debug camera controls
+function setupDebugControls() {
+    window.addEventListener('keydown', (event) => {
+        if (event.key >= '1' && event.key <= '4') {
+            const teamIndex = parseInt(event.key) - 1;
+            const pos = cameraPositions[teamIndex];
+            camera.position.set(pos.x, pos.y, pos.z);
+            camera.lookAt(0, 0, 0);
+        }
+    });
+}
 
 // Initialize socket connection
 console.log('Initializing socket connection...');
@@ -130,10 +159,22 @@ window.init = function(players) {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB); // Sky blue
     
-    // Create camera
+    // Create camera and set initial position based on player's team
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 10, 15);
+    
+    // Find current player's team and set appropriate camera position
+    const currentPlayerData = players.find(p => p.username === currentUsername);
+    if (currentPlayerData) {
+        const pos = cameraPositions[currentPlayerData.team];
+        camera.position.set(pos.x, pos.y, pos.z);
+    } else {
+        // Default to yellow team view if player data not found
+        camera.position.set(0, 10, -15);
+    }
     camera.lookAt(0, 0, 0);
+    
+    // Setup debug camera controls
+    setupDebugControls();
     
     // Create renderer
     renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -195,11 +236,17 @@ window.init = function(players) {
 function createCastles(players) {
     console.log('Creating team castles for players:', players);
     
-    // Clear existing castles and health bars
+    // Clear existing castles, circles and health bars
     castles.forEach(castle => {
         scene.remove(castle);
         castle.geometry.dispose();
         castle.material.dispose();
+    });
+    
+    circles.forEach(circle => {
+        scene.remove(circle);
+        circle.geometry.dispose();
+        circle.material.dispose();
     });
     
     healthBars.forEach(bar => {
@@ -209,6 +256,7 @@ function createCastles(players) {
     });
     
     castles = [];
+    circles = [];
     healthBars = [];
     
     const healthBarsContainer = document.getElementById('health-bars');
@@ -218,10 +266,10 @@ function createCastles(players) {
 
     // Fixed team colors
     const teamColors = {
-        0: 0xff0000,  // Red
-        1: 0x0000ff,  // Blue
-        2: 0x00ff00,  // Green
-        3: 0xffff00   // Yellow
+        0: 0xffff00,  // Yellow (1)
+        1: 0xff0000,  // Red (2)
+        2: 0x0000ff,  // Blue (3)
+        3: 0x00ff00   // Green (4)
     };
 
     // Find current player's team
@@ -242,15 +290,37 @@ function createCastles(players) {
         });
         const castle = new THREE.Mesh(castleGeometry, castleMaterial);
         
-        // Position castle in a circle, with current player's team castle at bottom
-        const adjustedTeam = (team - currentPlayerData.team + 4) % 4; // Rotate so player's team is at bottom
-        const angle = ((adjustedTeam + 2) / 4) * Math.PI * 2; // +2 to start from bottom
+        // Fixed positions matching camera views:
+        // Yellow (0): Bottom (-Z)
+        // Red (1): Right (+X)
+        // Blue (2): Top (+Z)
+        // Green (3): Left (-X)
         const radius = 8;
+        let angle = (team + 2) * (Math.PI / 2); // Start from bottom, go clockwise
+        
         castle.position.x = Math.cos(angle) * radius;
         castle.position.z = Math.sin(angle) * radius;
         castle.position.y = 2; // Half the height of the castle
         castle.castShadow = true;
         castle.receiveShadow = true;
+
+        // Rotate castle to face center
+        castle.rotation.y = angle + Math.PI; // Add 180 degrees to face center
+
+        // Create circle in front of castle
+        const circleGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.1, 32);
+        const circleMaterial = new THREE.MeshStandardMaterial({
+            color: teamColors[team],
+            roughness: 0.5,
+            metalness: 0.5
+        });
+        const circle = new THREE.Mesh(circleGeometry, circleMaterial);
+        circle.position.x = castle.position.x - Math.cos(angle) * 1.5;
+        circle.position.z = castle.position.z - Math.sin(angle) * 1.5;
+        circle.position.y = 0.05;
+        circle.rotation.x = -Math.PI / 2;
+        circle.castShadow = true;
+        circle.receiveShadow = true;
         
         // Get team members
         const teamMembers = players.filter(p => p.team === team);
@@ -261,15 +331,17 @@ function createCastles(players) {
             health: 10,
             teamMembers: teamMembers,
             teamColor: teamColors[team],
-            isActive: true // Add active state
+            isActive: true
         };
 
         scene.add(castle);
+        scene.add(circle);
         castles.push(castle);
+        circles.push(circle);
 
         // Create health bar for team
         createHealthBar(castle, {
-            username: `Team ${['Red', 'Blue', 'Green', 'Yellow'][team]}`,
+            username: `Team ${['Yellow', 'Red', 'Blue', 'Green'][team]}`,
             color: teamColors[team]
         });
     }
@@ -506,4 +578,50 @@ function onCastleClick(event) {
 }
 
 // Add event listener for castle clicks
-window.addEventListener('click', onCastleClick); 
+window.addEventListener('click', onCastleClick);
+
+// Create cameras for each castle
+function createCameras(players) {
+    const currentPlayerData = players.find(p => p.username === currentUsername);
+    if (!currentPlayerData) {
+        console.error('Current player not found in players list');
+        return;
+    }
+
+    // Create a camera for each castle position
+    for (let team = 0; team < 4; team++) {
+        const adjustedTeam = (team - currentPlayerData.team + 4) % 4;
+        const angle = ((adjustedTeam + 2) / 4) * Math.PI * 2;
+        const radius = 8;
+        
+        // Calculate castle position
+        const castleX = Math.cos(angle) * radius;
+        const castleZ = Math.sin(angle) * radius;
+        
+        // Create camera slightly behind and above castle
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const cameraDistance = 5; // Distance behind castle
+        const cameraHeight = 8;   // Height above ground
+        
+        // Position camera behind castle (opposite direction from center)
+        camera.position.x = castleX + Math.cos(angle) * cameraDistance;
+        camera.position.z = castleZ + Math.sin(angle) * cameraDistance;
+        camera.position.y = cameraHeight;
+        
+        // Look at center point (slightly above ground)
+        camera.lookAt(0, 1, 0);
+        
+        cameras.push(camera);
+    }
+}
+
+// Handle key press for camera switching
+function onKeyDown(event) {
+    if (event.key >= '1' && event.key <= '4') {
+        const newIndex = parseInt(event.key) - 1;
+        if (newIndex < cameras.length) {
+            currentCameraIndex = newIndex;
+            camera = cameras[currentCameraIndex];
+        }
+    }
+} 
