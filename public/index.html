@@ -1,110 +1,125 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Castle Battle</title>
+    <title>Castle Battle Game</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body {
             margin: 0;
             padding: 0;
-            overflow: hidden;
             font-family: Arial, sans-serif;
-            width: 100vw;
-            height: 100vh;
+            overflow: hidden;
         }
+
         #loginScreen, #waitingRoom, #gameScreen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            display: none;
-        }
-        #loginScreen {
             display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #f0f0f0;
-        }
-        #waitingRoom {
-            display: none;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
-            background: #e0e0e0;
+            justify-content: center;
         }
+
+        #loginScreen {
+            background-color: #f0f0f0;
+        }
+
+        #waitingRoom {
+            background-color: #e0e0e0;
+        }
+
         #gameScreen {
             display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: #000;
-            overflow: hidden;
+            background-color: #000;
         }
-        #gameScreen canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 1;
-        }
-        .health-bar {
-            position: absolute;
-            width: 200px;
-            height: 20px;
-            background: #ff0000;
-            border: 2px solid #000;
-            z-index: 1000;
-        }
-        .health-bar-fill {
-            width: 100%;
-            height: 100%;
-            background: #00ff00;
-            transition: width 0.3s;
-        }
+
         #playerList {
-            margin: 20px;
-            padding: 20px;
-            background: white;
-            border-radius: 5px;
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
         }
+
+        #playerList li {
+            margin: 10px 0;
+            font-size: 18px;
+        }
+
         button {
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 10px;
         }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        input {
+            padding: 10px;
+            font-size: 16px;
+            margin: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
         #healthBars {
+            position: fixed;
+            top: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            z-index: 1000;
+        }
+
+        .healthBar {
+            width: 200px;
+            height: 20px;
+            background-color: #333;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .healthFill {
+            width: 100%;
+            height: 100%;
+            background-color: #ff0000;
+            transition: width 0.3s ease;
+        }
+
+        canvas {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;
-            z-index: 1000;
+            width: 100%;
+            height: 100%;
         }
     </style>
 </head>
 <body>
     <div id="loginScreen">
-        <div>
-            <h2>Enter Username</h2>
-            <input type="text" id="username" placeholder="Username">
-            <button onclick="joinGame()">Join Game</button>
-        </div>
+        <h1>Castle Battle Game</h1>
+        <input type="text" id="username" placeholder="Enter your username">
+        <button onclick="joinGame()">Join Game</button>
     </div>
 
-    <div id="waitingRoom">
+    <div id="waitingRoom" style="display: none;">
         <h2>Waiting Room</h2>
-        <div id="playerList"></div>
+        <h3>Players:</h3>
+        <ul id="playerList"></ul>
         <button id="startButton" onclick="startGame()">Start Game</button>
     </div>
 
-    <div id="gameScreen">
-        <div id="healthBars"></div>
-    </div>
+    <div id="gameScreen"></div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="game.js"></script>
 </body>
 </html> 
