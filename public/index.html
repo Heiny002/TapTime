@@ -1,54 +1,33 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Castle Battle Game</title>
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <title>Castle Battle</title>
     <style>
         body {
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
-            overflow: hidden;
-        }
-
-        #loginScreen, #waitingRoom, #gameScreen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
-        }
-
-        #loginScreen {
+            align-items: flex-start;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
             background-color: #f0f0f0;
         }
 
-        #waitingRoom {
-            background-color: #e0e0e0;
-        }
-
-        #gameScreen {
+        #login-screen, #waiting-room, #strategy-screen {
+            text-align: center;
+            width: 90%;
+            max-width: 1200px;
+            margin: 20px auto;
             display: none;
-            background-color: #000;
+            position: relative;
         }
 
-        #playerList {
-            list-style: none;
-            padding: 0;
-            margin: 20px 0;
+        #login-screen {
+            display: block;
         }
 
-        #playerList li {
-            margin: 10px 0;
-            font-size: 18px;
-        }
-
-        button {
+        .button {
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
@@ -57,13 +36,14 @@
             border: none;
             border-radius: 5px;
             margin: 10px;
+            transition: background-color 0.3s;
         }
 
-        button:hover {
+        .button:hover {
             background-color: #45a049;
         }
 
-        input {
+        input[type="text"] {
             padding: 10px;
             font-size: 16px;
             margin: 10px;
@@ -71,55 +51,254 @@
             border-radius: 5px;
         }
 
-        #healthBars {
-            position: fixed;
-            top: 20px;
-            width: 100%;
-            display: flex;
-            justify-content: space-around;
-            z-index: 1000;
-        }
-
-        .healthBar {
-            width: 200px;
-            height: 20px;
-            background-color: #333;
+        /* Waiting Room Styles */
+        .waiting-container {
+            background-color: white;
             border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-height: 70vh;
             overflow: hidden;
         }
 
-        .healthFill {
-            width: 100%;
-            height: 100%;
-            background-color: #ff0000;
-            transition: width 0.3s ease;
+        .waiting-title {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: bold;
         }
 
-        canvas {
+        .players-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            max-height: calc(70vh - 80px);
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        /* Strategy Room Styles */
+        #strategy-screen {
+            text-align: left;
+            padding: 20px;
+        }
+
+        .strategy-header {
+            margin-bottom: 30px;
+        }
+
+        .team-info {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            max-width: 600px;
+        }
+
+        .team-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .player-number {
+            background-color: #4CAF50;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.9em;
+        }
+
+        .team-container {
+            width: 30%;
+            background-color: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            float: right;
+            margin-right: 50px;
+        }
+
+        .team-list {
+            height: 40vh;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .team-member {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            transition: background-color 0.2s;
+        }
+
+        .team-member:hover {
+            background-color: #e9ecef;
+        }
+
+        .team-member.current-player {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .member-number {
+            background-color: #6c757d;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.9em;
+        }
+
+        .team-member.current-player .member-number {
+            background-color: white;
+            color: #4CAF50;
+        }
+
+        .title {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        /* Scrollbar styling */
+        .players-grid::-webkit-scrollbar,
+        .team-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .players-grid::-webkit-scrollbar-track,
+        .team-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .players-grid::-webkit-scrollbar-thumb,
+        .team-list::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+
+        .players-grid::-webkit-scrollbar-thumb:hover,
+        .team-list::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .battle-button {
+            position: absolute;
+            bottom: 20px;
+            right: 50px;
+            margin: 0;
+        }
+
+        .player-name {
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            background-color: #eee;
+            transition: background-color 0.2s;
+        }
+
+        .player-name:hover {
+            background-color: #e0e0e0;
+        }
+
+        .current-player {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+        }
+
+        #game-screen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
+            background-color: #000;
+            z-index: 1000;
+        }
+
+        .health-bar-container {
+            pointer-events: none;
+            z-index: 1001;
+        }
+
+        .health-bar {
+            transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
         }
     </style>
 </head>
 <body>
-    <div id="loginScreen">
-        <h1>Castle Battle Game</h1>
+    <div id="login-screen">
+        <h1>Castle Battle</h1>
         <input type="text" id="username" placeholder="Enter your username">
-        <button onclick="joinGame()">Join Game</button>
+        <button class="button" onclick="joinGame()">Join Game</button>
     </div>
 
-    <div id="waitingRoom" style="display: none;">
-        <h2>Waiting Room</h2>
-        <h3>Players:</h3>
-        <ul id="playerList"></ul>
-        <button id="startButton" onclick="startGame()">Start Game</button>
+    <div id="waiting-room">
+        <h1>Waiting Room</h1>
+        <div class="waiting-container">
+            <div class="waiting-title">Tappers</div>
+            <div class="players-grid" id="players-list">
+                <!-- Players will be dynamically added here -->
+            </div>
+        </div>
+        <button class="button" onclick="strategize()">Strategize</button>
     </div>
 
-    <div id="gameScreen"></div>
+    <div id="strategy-screen">
+        <div class="strategy-header">
+            <h1>Strategy Room</h1>
+            <div class="team-info" id="team-info">
+                <!-- Team information will be displayed here -->
+            </div>
+        </div>
+        <div class="team-container">
+            <div class="title">Your Team</div>
+            <div class="team-list" id="team-list">
+                <!-- Team members will be dynamically added here -->
+            </div>
+        </div>
+        <button class="button battle-button" onclick="startGame()">Start Battle</button>
+    </div>
 
+    <div id="game-screen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000;">
+        <div id="health-bars" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1001;"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="game.js"></script>
+    <script>
+        // Add event listener for return key on username input
+        document.getElementById('username').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                joinGame();
+            }
+        });
+
+        // Add event listener for castle clicks
+        window.addEventListener('click', onCastleClick);
+    </script>
 </body>
 </html> 
