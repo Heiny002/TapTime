@@ -60,18 +60,26 @@ const CameraManager = {
     minY: 5,
     maxY: 15,
     minDistance: 10,
-    maxDistance: 20,
+    maxDistance: 30, // Increased max distance for zoom out
     isTransitioning: false,
+    zoomLevel: 1,
+    minZoom: 0.7,
+    maxZoom: 1.5,
     
     init(initialPos) {
         this.currentPosition.copy(initialPos);
         this.targetPosition.copy(initialPos);
         camera.position.copy(initialPos);
+        this.zoomLevel = 1;
     },
     
     setTargetPosition(pos) {
         // Clamp Y position
         pos.y = Math.max(this.minY, Math.min(this.maxY, pos.y));
+        
+        // Apply zoom to x and z coordinates
+        pos.x *= this.zoomLevel;
+        pos.z *= this.zoomLevel;
         
         // Ensure minimum and maximum distance from center
         const horizontalDist = Math.sqrt(pos.x * pos.x + pos.z * pos.z);
@@ -85,6 +93,17 @@ const CameraManager = {
         
         this.targetPosition.copy(pos);
         this.isTransitioning = true;
+    },
+    
+    setZoom(delta) {
+        const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoomLevel + delta));
+        if (newZoom !== this.zoomLevel) {
+            this.zoomLevel = newZoom;
+            if (currentPlayer) {
+                const pos = CAMERA_SETTINGS.updateCameraPosition(currentPlayer.team);
+                this.setTargetPosition(new THREE.Vector3(pos.x, pos.y, pos.z));
+            }
+        }
     },
     
     update() {
@@ -341,8 +360,35 @@ const ResourceManager = {
     }
 };
 
-// Initialize Three.js scene with optimizations
-window.init = function(players) {
+// Add responsive camera settings
+const CAMERA_SETTINGS = {
+    getZoomLevel() {
+        // Base zoom level is determined by screen size and user zoom
+        const aspectRatio = window.innerWidth / window.innerHeight;
+        const isMobile = window.innerWidth <= 768;
+        
+        // Adjust zoom based on aspect ratio and device type
+        let baseZoom = isMobile ? (aspectRatio < 1 ? 20 : 17) : 15;
+        return baseZoom * CameraManager.zoomLevel;
+    },
+    
+    updateCameraPosition(teamIndex) {
+        const zoomLevel = this.getZoomLevel();
+        const basePosition = cameraPositions[teamIndex];
+        
+        // Scale the x and z positions while maintaining the angle
+        const scaledPosition = {
+            x: basePosition.x * (zoomLevel / 15),
+            y: basePosition.y,
+            z: basePosition.z * (zoomLevel / 15)
+        };
+        
+        return scaledPosition;
+    }
+};
+
+// Modify the init function to use responsive camera settings
+function init(players) {
     console.log('Starting Three.js initialization...');
     
     // Check if Three.js is loaded
@@ -374,11 +420,12 @@ window.init = function(players) {
         // Find current player's team and set appropriate camera position
         const currentPlayerData = players.find(p => p.username === currentUsername);
         if (currentPlayerData) {
-            const pos = cameraPositions[currentPlayerData.team];
+            const pos = CAMERA_SETTINGS.updateCameraPosition(currentPlayerData.team);
             CameraManager.init(new THREE.Vector3(pos.x, pos.y, pos.z));
             console.log('Camera positioned for team:', currentPlayerData.team);
         } else {
-            CameraManager.init(new THREE.Vector3(-15, 10, 0));
+            const pos = CAMERA_SETTINGS.updateCameraPosition(0);
+            CameraManager.init(new THREE.Vector3(pos.x, pos.y, pos.z));
             console.log('Camera positioned to default view');
         }
         camera.lookAt(0, 0, 0);
@@ -504,6 +551,12 @@ window.init = function(players) {
         
         // Force initial render
         renderer.render(scene, camera);
+        
+        // Add touch event handling
+        setupTouchEvents();
+        
+        // Add mouse wheel zoom
+        setupMouseControls();
         
         console.log('Game scene initialized successfully');
     } catch (error) {
@@ -694,8 +747,13 @@ function updateHealthBarPosition(castle, healthBar) {
     const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
     const y = (-vector.y * 0.5 + 0.5) * window.innerHeight;
 
-    healthBar.style.left = `${x - 50}px`;
-    healthBar.style.top = `${y - 20}px`;
+    // Add mobile-specific adjustments
+    const isMobile = window.innerWidth <= 768;
+    const scale = isMobile ? 1.2 : 1;
+    
+    healthBar.style.transform = `scale(${scale})`;
+    healthBar.style.left = `${x - (50 * scale)}px`;
+    healthBar.style.top = `${y - (20 * scale)}px`;
 }
 
 // Update health bar
@@ -914,13 +972,31 @@ function startBattle(players) {
     }
 }
 
-// Handle window resize
+// Update onWindowResize to handle camera zoom
 function onWindowResize() {
     if (camera && renderer) {
+        // Update camera aspect ratio
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
+        
+        // Update camera position based on new screen size
+        if (currentPlayer) {
+            const pos = CAMERA_SETTINGS.updateCameraPosition(currentPlayer.team);
+            CameraManager.setTargetPosition(new THREE.Vector3(pos.x, pos.y, pos.z));
+        }
+        
+        // Update renderer size
         renderer.setSize(window.innerWidth, window.innerHeight);
-        console.log('Window resized, renderer updated');
+        
+        // Update health bar positions
+        castles.forEach((castle, index) => {
+            if (healthBars[index]) {
+                updateHealthBarPosition(castle, healthBars[index]);
+            }
+        });
+        
+        // Force a render to ensure everything is updated
+        renderer.render(scene, camera);
     }
 }
 
@@ -968,4 +1044,98 @@ function onKeyDown(event) {
             camera = cameras[currentCameraIndex];
         }
     }
+}
+
+// Add touch event handling
+function setupTouchEvents() {
+    const gameScreen = document.getElementById('game-screen');
+    if (!gameScreen) return;
+
+    let touchStartTime = 0;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let lastTouchTime = 0;
+    let initialPinchDistance = 0;
+    const TOUCH_COOLDOWN = 500; // 500ms cooldown between touches
+
+    function getPinchDistance(touches) {
+        return Math.hypot(
+            touches[0].clientX - touches[1].clientX,
+            touches[0].clientY - touches[1].clientY
+        );
+    }
+
+    gameScreen.addEventListener('touchstart', (event) => {
+        event.preventDefault();
+        if (event.touches.length === 2) {
+            // Start of pinch - store initial distance
+            initialPinchDistance = getPinchDistance(event.touches);
+        } else {
+            touchStartTime = Date.now();
+            touchStartX = event.touches[0].clientX;
+            touchStartY = event.touches[0].clientY;
+        }
+    }, { passive: false });
+
+    gameScreen.addEventListener('touchmove', (event) => {
+        event.preventDefault();
+        if (event.touches.length === 2) {
+            // Handle pinch zoom
+            const currentDistance = getPinchDistance(event.touches);
+            const pinchDelta = (currentDistance - initialPinchDistance) * 0.005;
+            CameraManager.setZoom(-pinchDelta); // Negative for natural zoom direction
+            initialPinchDistance = currentDistance;
+        }
+    }, { passive: false });
+
+    gameScreen.addEventListener('touchend', (event) => {
+        event.preventDefault();
+        if (event.touches.length === 0 && Date.now() - touchStartTime < 200) {
+            // Handle tap for castle selection
+            const touchEndTime = Date.now();
+            const touchEndX = event.changedTouches[0].clientX;
+            const touchEndY = event.changedTouches[0].clientY;
+
+            const touchDistance = Math.sqrt(
+                Math.pow(touchEndX - touchStartX, 2) + 
+                Math.pow(touchEndY - touchStartY, 2)
+            );
+
+            if (touchDistance < 10 && touchEndTime - lastTouchTime >= TOUCH_COOLDOWN) {
+                lastTouchTime = touchEndTime;
+                handleCastleTouch(touchEndX, touchEndY);
+            }
+        }
+    }, { passive: false });
+}
+
+// Handle castle touch selection
+function handleCastleTouch(x, y) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const normalizedX = ((x - rect.left) / rect.width) * 2 - 1;
+    const normalizedY = -((y - rect.top) / rect.height) * 2 + 1;
+
+    const raycaster = ObjectPool.getRaycaster();
+    raycaster.setFromCamera(new THREE.Vector2(normalizedX, normalizedY), camera);
+
+    const intersects = raycaster.intersectObjects(castles);
+    if (intersects.length > 0) {
+        const castle = intersects[0].object;
+        const castleIndex = castles.indexOf(castle);
+        if (castleIndex !== -1) {
+            handleCastleClick(castleIndex);
+        }
+    }
+}
+
+// Add mouse wheel zoom
+function setupMouseControls() {
+    const gameScreen = document.getElementById('game-screen');
+    if (!gameScreen) return;
+
+    gameScreen.addEventListener('wheel', (event) => {
+        event.preventDefault();
+        const delta = event.deltaY * -0.001; // Adjust sensitivity
+        CameraManager.setZoom(delta);
+    }, { passive: false });
 } 

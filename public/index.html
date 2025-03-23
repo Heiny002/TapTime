@@ -2,7 +2,22 @@
 <html>
 <head>
     <title>Castle Battle</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
+        /* Prevent text selection and zoom on mobile */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* Allow text selection in input fields */
+        input[type="text"] {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
         body {
             margin: 0;
             padding: 0;
@@ -12,6 +27,67 @@
             min-height: 100vh;
             font-family: Arial, sans-serif;
             background-color: #f0f0f0;
+            touch-action: manipulation;
+        }
+
+        /* Mobile-first responsive styles */
+        @media (max-width: 768px) {
+            #login-screen, #waiting-room, #strategy-screen {
+                width: 95%;
+                margin: 10px auto;
+            }
+
+            .button {
+                padding: 12px 24px;
+                font-size: 18px;
+                width: 80%;
+                max-width: 300px;
+                margin: 10px auto;
+                display: block;
+            }
+
+            input[type="text"] {
+                width: 80%;
+                max-width: 300px;
+                font-size: 18px;
+                padding: 12px;
+                margin: 10px auto;
+                display: block;
+            }
+
+            .team-container {
+                width: 90%;
+                height: auto;
+                max-height: 40vh;
+                position: fixed;
+                right: 5%;
+                top: 60px;
+                z-index: 1000;
+            }
+
+            .battle-button {
+                width: 90%;
+                right: 5%;
+                top: auto;
+                bottom: 20px;
+                padding: 16px;
+                font-size: 18px;
+                z-index: 1000;
+            }
+
+            .players-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 8px;
+            }
+
+            .tapper-name {
+                padding: 12px;
+                font-size: 16px;
+            }
+
+            .health-bar-container {
+                transform: scale(1.2);
+            }
         }
 
         #login-screen, #waiting-room, #strategy-screen {
@@ -175,6 +251,71 @@
             position: fixed;
             right: 20px;
             top: 200px;
+            transition: transform 0.3s ease;
+        }
+
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            .strategy-header {
+                padding: 10px;
+            }
+
+            .team-info {
+                margin: 10px 0;
+                padding: 12px;
+            }
+
+            .team-container {
+                width: 90%;
+                right: 5%;
+                top: auto;
+                bottom: 80px;
+                padding: 10px;
+                max-height: 40vh;
+                transform-origin: bottom center;
+            }
+
+            .team-container.minimized {
+                transform: translateY(calc(100% - 40px));
+            }
+
+            .minimize-button {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                width: 24px;
+                height: 24px;
+                border: none;
+                background: none;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+                color: #666;
+                cursor: pointer;
+                z-index: 1002;
+            }
+
+            .team-list {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 8px;
+                padding: 8px;
+                overflow-y: auto;
+                max-height: calc(40vh - 60px);
+            }
+
+            .team-member {
+                padding: 8px;
+                font-size: 14px;
+            }
+
+            .battle-button {
+                bottom: 15px;
+                height: 50px;
+                margin: 0;
+            }
         }
 
         .team-list {
@@ -320,7 +461,8 @@
                 <!-- Team information will be displayed here -->
             </div>
         </div>
-        <div class="team-container">
+        <div class="team-container" id="team-container">
+            <button class="minimize-button" id="minimize-button">−</button>
             <div class="title"></div>
             <div class="team-list" id="team-list">
                 <!-- Team members will be dynamically added here -->
@@ -346,6 +488,19 @@
 
         // Add event listener for castle clicks
         window.addEventListener('click', onCastleClick);
+
+        // Add minimize functionality for team container
+        document.addEventListener('DOMContentLoaded', function() {
+            const minimizeButton = document.getElementById('minimize-button');
+            const teamContainer = document.getElementById('team-container');
+            
+            if (minimizeButton && teamContainer) {
+                minimizeButton.addEventListener('click', function() {
+                    teamContainer.classList.toggle('minimized');
+                    minimizeButton.textContent = teamContainer.classList.contains('minimized') ? '+' : '−';
+                });
+            }
+        });
     </script>
 </body>
 </html> 
