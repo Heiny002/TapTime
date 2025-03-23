@@ -18,6 +18,7 @@
             user-select: text;
         }
 
+        /* All desktop styles first */
         body {
             margin: 0;
             padding: 0;
@@ -28,66 +29,6 @@
             font-family: Arial, sans-serif;
             background-color: #f0f0f0;
             touch-action: manipulation;
-        }
-
-        /* Mobile-first responsive styles */
-        @media (max-width: 768px) {
-            #login-screen, #waiting-room, #strategy-screen {
-                width: 95%;
-                margin: 10px auto;
-            }
-
-            .button {
-                padding: 12px 24px;
-                font-size: 18px;
-                width: 80%;
-                max-width: 300px;
-                margin: 10px auto;
-                display: block;
-            }
-
-            input[type="text"] {
-                width: 80%;
-                max-width: 300px;
-                font-size: 18px;
-                padding: 12px;
-                margin: 10px auto;
-                display: block;
-            }
-
-            .team-container {
-                width: 90%;
-                height: auto;
-                max-height: 40vh;
-                position: fixed;
-                right: 5%;
-                top: 60px;
-                z-index: 1000;
-            }
-
-            .battle-button {
-                width: 90%;
-                right: 5%;
-                top: auto;
-                bottom: 20px;
-                padding: 16px;
-                font-size: 18px;
-                z-index: 1000;
-            }
-
-            .players-grid {
-                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-                gap: 8px;
-            }
-
-            .tapper-name {
-                padding: 12px;
-                font-size: 16px;
-            }
-
-            .health-bar-container {
-                transform: scale(1.2);
-            }
         }
 
         #login-screen, #waiting-room, #strategy-screen {
@@ -173,7 +114,7 @@
 
         /* Strategy Room Styles */
         #strategy-screen {
-            text-align: left;
+            text-align: center;
             padding: 20px;
             position: relative;
         }
@@ -254,74 +195,19 @@
             transition: transform 0.3s ease;
         }
 
-        /* Mobile-specific styles */
-        @media (max-width: 768px) {
-            .strategy-header {
-                padding: 10px;
-            }
-
-            .team-info {
-                margin: 10px 0;
-                padding: 12px;
-            }
-
-            .team-container {
-                width: 90%;
-                right: 5%;
-                top: auto;
-                bottom: 80px;
-                padding: 10px;
-                max-height: 40vh;
-                transform-origin: bottom center;
-            }
-
-            .team-container.minimized {
-                transform: translateY(calc(100% - 40px));
-            }
-
-            .minimize-button {
-                position: absolute;
-                top: 8px;
-                right: 8px;
-                width: 24px;
-                height: 24px;
-                border: none;
-                background: none;
-                padding: 0;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 20px;
-                color: #666;
-                cursor: pointer;
-                z-index: 1002;
-            }
-
-            .team-list {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-                gap: 8px;
-                padding: 8px;
-                overflow-y: auto;
-                max-height: calc(40vh - 60px);
-            }
-
-            .team-member {
-                padding: 8px;
-                font-size: 14px;
-            }
-
-            .battle-button {
-                bottom: 15px;
-                height: 50px;
-                margin: 0;
-            }
+        .team-container-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 10px;
         }
 
-        .team-list {
-            height: calc(100% - 30px);
-            overflow-y: auto;
-            padding: 10px;
+        .team-container-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
         }
 
         .battle-button {
@@ -336,11 +222,135 @@
             border-radius: 5px;
             transition: all 0.3s ease;
             margin: 0;
-           /* z-index: 100; */
         }
 
         .battle-button:hover {
             filter: brightness(1.1);
+        }
+
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            /* Login and general styles */
+            #login-screen, #waiting-room, #strategy-screen {
+                width: 95%;
+                margin: 10px auto;
+            }
+
+            .button {
+                padding: 12px 24px;
+                font-size: 18px;
+                width: 80%;
+                max-width: 300px;
+                margin: 10px auto;
+                display: block;
+            }
+
+            input[type="text"] {
+                width: 80%;
+                max-width: 300px;
+                font-size: 18px;
+                padding: 12px;
+                margin: 10px auto;
+                display: block;
+            }
+
+            /* Waiting room styles */
+            .players-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 8px;
+            }
+
+            .tapper-name {
+                padding: 12px;
+                font-size: 16px;
+            }
+
+            /* Strategy room styles */
+            .strategy-header {
+                padding: 10px;
+            }
+
+            .team-info {
+                width: 90%;
+                padding: 12px;
+                margin: 10px auto;
+            }
+
+            .team-container {
+                width: 90%;
+                position: relative;
+                right: auto;
+                top: auto;
+                margin: 10px auto;
+                height: auto;
+                max-height: 40vh;
+                padding: 0;
+                transition: max-height 0.3s ease;
+                overflow: hidden;
+            }
+
+            .team-container.minimized {
+                max-height: 45px;
+            }
+
+            .team-container-header {
+                background-color: white;
+                position: sticky;
+                top: 0;
+                z-index: 1;
+            }
+
+            .minimize-button {
+                position: relative;
+                width: 24px;
+                height: 24px;
+                border: none;
+                background: none;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+                color: #666;
+                cursor: pointer;
+            }
+
+            .team-list {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 8px;
+                padding: 10px;
+                overflow-y: auto;
+                max-height: calc(40vh - 45px);
+            }
+
+            .team-member {
+                padding: 8px;
+                font-size: 14px;
+            }
+
+            .battle-button {
+                width: 90%;
+                max-width: 400px;
+                position: fixed;
+                left: 50%;
+                transform: translateX(-50%);
+                bottom: 15px;
+                height: 50px;
+                margin: 0;
+                z-index: 1000;
+            }
+
+            /* Health bar styles */
+            .health-bar-container {
+                transform: scale(1.2);
+            }
+        }
+
+        .team-list {
+            height: calc(100% - 30px);
+            overflow-y: auto;
+            padding: 10px;
         }
 
         .health-bar-container {
@@ -462,8 +472,10 @@
             </div>
         </div>
         <div class="team-container" id="team-container">
-            <button class="minimize-button" id="minimize-button">−</button>
-            <div class="title"></div>
+            <div class="team-container-header">
+                <div class="team-container-title">Players</div>
+                <button class="minimize-button" id="minimize-button">−</button>
+            </div>
             <div class="team-list" id="team-list">
                 <!-- Team members will be dynamically added here -->
             </div>
