@@ -25,10 +25,10 @@ const CLICK_COOLDOWN = 500; // 500ms cooldown between clicks
  * Team 3: Green (left, -X)
  */
 const cameraPositions = {
-    0: { x: 0, y: 10, z: -15 },   // Yellow team (1)
-    1: { x: 15, y: 10, z: 0 },    // Red team (2)
-    2: { x: 0, y: 10, z: 15 },    // Blue team (3)
-    3: { x: -15, y: 10, z: 0 }    // Green team (4)
+    0: { x: 0, y: 10, z: -15 },   // Yellow team - looking from north to south
+    1: { x: 15, y: 10, z: 0 },    // Red team - looking from west to east
+    2: { x: 0, y: 10, z: 15 },    // Blue team - looking from south to north
+    3: { x: -15, y: 10, z: 0 }    // Green team - looking from east to west
 };
 
 // Add debug camera controls
@@ -81,35 +81,56 @@ function setupSocketListeners() {
             [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
         }
         
-        // Find current player's number
+        // Find current player's index in team members
         const currentPlayerIndex = data.teamMembers.findIndex(m => m.username === currentUsername);
         const currentPlayerNumber = numbers[currentPlayerIndex];
-        
-        // Display team information with player number
+
+        const teamColors = {
+            0: '#E9D229', // Yellow
+            1: '#CC1F11', // Red
+            2: '#0A48A2', // Blue
+            3: '#3BA226'  // Green
+        };
+
         const teamInfo = document.getElementById('team-info');
-        const teamColor = data.teamColor.toString(16).padStart(6, '0');
-        teamInfo.innerHTML = `
-            <div class="team-color" style="background-color: #${teamColor}"></div>
-            <div class="player-info">
-                <span>${currentUsername}</span>
-                <span class="player-number">#${currentPlayerNumber}</span>
-            </div>
-            <span>Team ${['Red', 'Blue', 'Green', 'Yellow'][data.team]}</span>
-        `;
-        
-        // Display team members
         const teamList = document.getElementById('team-list');
-        teamList.innerHTML = '';
+        const startButton = document.querySelector('.battle-button');
         
+        // Clear previous content
+        teamInfo.innerHTML = '';
+        teamList.innerHTML = '';
+
+        // Update team info section
+        const teamColor = teamColors[data.team];
+        teamInfo.innerHTML = `
+            <div class="team-color" style="background-color: ${teamColor}"></div>
+            <div class="player-info">
+                <span style="color: ${teamColor}">Your Team:</span>
+                <span class="player-number" style="background-color: ${teamColor}">Team ${['Yellow', 'Red', 'Blue', 'Green'][data.team]} (#${currentPlayerNumber})</span>
+            </div>
+        `;
+
+        // Update team list
         data.teamMembers.forEach((member, index) => {
-            const memberElement = document.createElement('div');
-            memberElement.className = `team-member${member.username === currentUsername ? ' current-player' : ''}`;
-            memberElement.innerHTML = `
+            const memberDiv = document.createElement('div');
+            memberDiv.className = 'team-member';
+            if (member.username === currentUsername) {
+                memberDiv.classList.add('current-player');
+                memberDiv.style.backgroundColor = teamColor;
+                memberDiv.style.color = data.team === 0 ? '#000000' : '#ffffff';
+            }
+            
+            memberDiv.innerHTML = `
                 <span>${member.username}</span>
-                <span class="member-number">#${numbers[index]}</span>
+                <span class="member-number" style="background-color: ${teamColor}">${numbers[index]}</span>
             `;
-            teamList.appendChild(memberElement);
+            teamList.appendChild(memberDiv);
         });
+
+        // Update Start Battle button color
+        startButton.style.backgroundColor = teamColor;
+        // Make text black for yellow team, white for others
+        startButton.style.color = data.team === 0 ? '#000000' : '#ffffff';
     });
 
     socket.on('gameStart', (data) => {
@@ -272,10 +293,10 @@ function createCastles(players) {
 
     // Fixed team colors - MUST match server's TEAM_COLORS mapping
     const teamColors = {
-        0: 0xffff00,  // Yellow (1)
-        1: 0xff0000,  // Red (2)
-        2: 0x0000ff,  // Blue (3)
-        3: 0x00ff00   // Green (4)
+        0: 0xE9D229,  // Yellow (1)
+        1: 0xCC1F11,  // Red (2)
+        2: 0x0A48A2,  // Blue (3)
+        3: 0x3BA226   // Green (4)
     };
 
     // Find current player's team
@@ -460,8 +481,14 @@ function updatePlayerList(players) {
     const playersPerColumn = 10;
     let currentColumn = document.createElement('div');
     currentColumn.className = 'tapper-column';
+
+    // Sort players to show non-dummy players first (new users)
+    const sortedPlayers = players.sort((a, b) => {
+        if (a.isDummy === b.isDummy) return 0;
+        return a.isDummy ? 1 : -1;
+    });
     
-    players.forEach((player, index) => {
+    sortedPlayers.forEach((player, index) => {
         if (index % playersPerColumn === 0 && index !== 0) {
             playersList.appendChild(currentColumn);
             currentColumn = document.createElement('div');

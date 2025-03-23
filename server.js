@@ -1,10 +1,31 @@
 const express = require('express');
 const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require("socket.io");
+const io = new Server(server);
 const path = require('path');
 
 app.use(express.static('public'));
+
+// Port handling
+function findAvailablePort(startPort) {
+    return new Promise((resolve, reject) => {
+        const tryPort = (port) => {
+            const testServer = http.createServer();
+            testServer.listen(port, () => {
+                testServer.once('close', () => {
+                    resolve(port);
+                });
+                testServer.close();
+            });
+            testServer.on('error', () => {
+                tryPort(port + 1);
+            });
+        };
+        tryPort(startPort);
+    });
+}
 
 // List of fun dummy usernames
 const dummyUsernames = [
@@ -44,10 +65,10 @@ let activeCastles = new Set([0, 1, 2, 3]);
 
 // Team colors (constants)
 const TEAM_COLORS = {
-    YELLOW: 0xffff00,  // Team 0 (Key 1)
-    RED: 0xff0000,     // Team 1 (Key 2)
-    BLUE: 0x0000ff,    // Team 2 (Key 3)
-    GREEN: 0x00ff00    // Team 3 (Key 4)
+    YELLOW: 0xE9D229,  // Team 0 (Key 1)
+    RED: 0xCC1F11,     // Team 1 (Key 2)
+    BLUE: 0x0A48A2,    // Team 2 (Key 3)
+    GREEN: 0x3BA226    // Team 3 (Key 4)
 };
 
 // Shuffle array randomly
@@ -240,11 +261,20 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
-http.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`\nAccess from other devices using:`);
-    console.log(`http://192.168.0.52:${PORT}`);
-    console.log(`\nOr use localhost on this machine:`);
-    console.log(`http://localhost:${PORT}`);
-}); 
+// Start server with automatic port finding
+async function startServer() {
+    try {
+        const port = await findAvailablePort(3000);
+        server.listen(port, () => {
+            console.log(`\nServer running on port ${port}`);
+            console.log('\nAccess from other devices using:');
+            console.log(`http://${require('os').networkInterfaces()['en0']?.[1]?.address || 'localhost'}:${port}`);
+            console.log('\nOr use localhost on this machine:');
+            console.log(`http://localhost:${port}\n`);
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error);
+    }
+}
+
+startServer(); 

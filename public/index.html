@@ -72,20 +72,39 @@
         .players-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
             max-height: calc(70vh - 80px);
             overflow-y: auto;
             padding: 10px;
+        }
+
+        .tapper-name {
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            background-color: #eee;
+            transition: background-color 0.2s;
+        }
+
+        .tapper-name:hover {
+            background-color: #e0e0e0;
+        }
+
+        .current-player {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
         }
 
         /* Strategy Room Styles */
         #strategy-screen {
             text-align: left;
             padding: 20px;
+            position: relative;
         }
 
         .strategy-header {
-            margin-bottom: 30px;
+            width: 100%;
+            margin-bottom: 20px;
         }
 
         .team-info {
@@ -97,7 +116,8 @@
             display: flex;
             align-items: center;
             gap: 15px;
-            max-width: 600px;
+            margin-top: 20px;
+            width: 100%;
         }
 
         .team-color {
@@ -117,27 +137,10 @@
         }
 
         .player-number {
-            background-color: #4CAF50;
-            color: white;
             padding: 5px 10px;
             border-radius: 15px;
             font-size: 0.9em;
-        }
-
-        .team-container {
-            width: 30%;
-            background-color: white;
-            border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            float: right;
-            margin-right: 50px;
-        }
-
-        .team-list {
-            height: 40vh;
-            overflow-y: auto;
-            padding: 10px;
+            color: white;
         }
 
         .team-member {
@@ -151,33 +154,61 @@
             transition: background-color 0.2s;
         }
 
-        .team-member:hover {
-            background-color: #e9ecef;
-        }
-
         .team-member.current-player {
-            background-color: #4CAF50;
             color: white;
         }
 
         .member-number {
-            background-color: #6c757d;
-            color: white;
             padding: 2px 8px;
             border-radius: 12px;
             font-size: 0.9em;
+            color: white;
         }
 
-        .team-member.current-player .member-number {
+        .team-container {
+            width: 30%;
+            height: 45vh;
             background-color: white;
-            color: #4CAF50;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: fixed;
+            right: 20px;
+            top: 200px;
         }
 
-        .title {
-            font-size: 20px;
-            color: #333;
-            margin-bottom: 15px;
-            font-weight: bold;
+        .team-list {
+            height: calc(100% - 30px);
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .battle-button {
+            position: fixed;
+            right: 20px;
+            width: 30%;
+            top: calc(180px + 45vh + 60px);
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            margin: 0;
+           /* z-index: 100; */
+        }
+
+        .battle-button:hover {
+            filter: brightness(1.1);
+        }
+
+        .health-bar-container {
+            pointer-events: none;
+            z-index: 1001;
+        }
+
+        .health-bar {
+            transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
         }
 
         /* Scrollbar styling */
@@ -201,50 +232,6 @@
         .players-grid::-webkit-scrollbar-thumb:hover,
         .team-list::-webkit-scrollbar-thumb:hover {
             background: #555;
-        }
-
-        .battle-button {
-            position: absolute;
-            bottom: 20px;
-            right: 50px;
-            margin: 0;
-        }
-
-        .player-name {
-            padding: 8px;
-            margin: 5px 0;
-            border-radius: 4px;
-            background-color: #eee;
-            transition: background-color 0.2s;
-        }
-
-        .player-name:hover {
-            background-color: #e0e0e0;
-        }
-
-        .current-player {
-            background-color: #4CAF50;
-            color: white;
-            font-weight: bold;
-        }
-
-        #game-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #000;
-            z-index: 1000;
-        }
-
-        .health-bar-container {
-            pointer-events: none;
-            z-index: 1001;
-        }
-
-        .health-bar {
-            transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
         }
     </style>
 </head>
@@ -274,7 +261,7 @@
             </div>
         </div>
         <div class="team-container">
-            <div class="title">Your Team</div>
+            <div class="title"></div>
             <div class="team-list" id="team-list">
                 <!-- Team members will be dynamically added here -->
             </div>
