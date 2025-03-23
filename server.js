@@ -12,6 +12,12 @@ app.use(express.static('public'));
 function findAvailablePort(startPort) {
     return new Promise((resolve, reject) => {
         const tryPort = (port) => {
+            if (port > startPort + 10) {
+                console.error('Could not find available port in range. Using default port 3000.');
+                resolve(3000);
+                return;
+            }
+            
             const testServer = http.createServer();
             testServer.listen(port, () => {
                 testServer.once('close', () => {
@@ -20,7 +26,19 @@ function findAvailablePort(startPort) {
                 testServer.close();
             });
             testServer.on('error', () => {
-                tryPort(port + 1);
+                // Kill any existing process on port 3000 if that's what we're trying
+                if (port === 3000) {
+                    require('child_process').exec(`lsof -ti:${port} | xargs kill -9`, (err) => {
+                        if (!err) {
+                            // Try port 3000 again after killing the process
+                            setTimeout(() => tryPort(port), 1000);
+                        } else {
+                            tryPort(port + 1);
+                        }
+                    });
+                } else {
+                    tryPort(port + 1);
+                }
             });
         };
         tryPort(startPort);
@@ -80,66 +98,127 @@ function shuffleArray(array) {
     return array;
 }
 
-// Initialize dummy players
-function initializeDummyPlayers() {
-    players = [];
-    // Add exactly 2196 dummy players (549 * 4 teams = 2196)
-    for (let i = 0; i < 2196; i++) {
-        players.push({
-            id: `dummy_${i}`,
-            username: dummyUsernames[i % dummyUsernames.length], // Cycle through usernames
-            castle: null,
-            health: 10,
-            isDummy: true,
-            team: null
-        });
+// Dummy player manager with balanced team distribution
+const DummyPlayerManager = {
+    template: {
+        castle: null,
+        health: 10,
+        isDummy: true,
+        team: null
+    },
+    
+    // Shuffle array with deduplication of consecutive names
+    shuffleAndDeduplicate(array) {
+        const result = [];
+        const available = [...array];
+        let lastUsername = null;
+        
+        while (available.length > 0) {
+            // Filter out usernames that match the last one used
+            const validChoices = available.filter(dummy => dummy.username !== lastUsername);
+            
+            // If no valid choices (only duplicates left), reset lastUsername
+            if (validChoices.length === 0) {
+                lastUsername = null;
+                continue;
+            }
+            
+            // Pick random valid dummy
+            const index = Math.floor(Math.random() * validChoices.length);
+            const chosen = validChoices[index];
+            
+            // Remove the chosen dummy from available pool
+            const availableIndex = available.findIndex(d => d.id === chosen.id);
+            available.splice(availableIndex, 1);
+            
+            // Add to result and update lastUsername
+            result.push(chosen);
+            lastUsername = chosen.username;
+        }
+        
+        return result;
+    },
+    
+    getTeamDummies(team, count) {
+        const dummies = [];
+        const usedUsernames = new Set();
+        
+        for (let i = 0; i < count; i++) {
+            // Get random username, avoiding recent duplicates if possible
+            let username;
+            const availableUsernames = dummyUsernames.filter(name => !usedUsernames.has(name));
+            
+            if (availableUsernames.length > 0) {
+                username = availableUsernames[Math.floor(Math.random() * availableUsernames.length)];
+                usedUsernames.add(username);
+                // Keep set size manageable to allow reuse of names
+                if (usedUsernames.size > 20) {
+                    usedUsernames.clear();
+                }
+            } else {
+                username = dummyUsernames[Math.floor(Math.random() * dummyUsernames.length)];
+            }
+            
+            const dummy = {
+                ...this.template,
+                id: `dummy_${Math.floor(Math.random() * 10000)}`,
+                username,
+                team
+            };
+            dummies.push(dummy);
+        }
+        
+        return this.shuffleAndDeduplicate(dummies);
+    },
+    
+    // Get a balanced set of dummy players for all teams
+    getBalancedDummies(realPlayerTeam, playersPerTeam) {
+        const dummies = [];
+        for (let team = 0; team < 4; team++) {
+            const count = team === realPlayerTeam ? playersPerTeam - 1 : playersPerTeam;
+            dummies.push(...this.getTeamDummies(team, count));
+        }
+        return this.shuffleAndDeduplicate(dummies);
     }
-}
+};
 
-// Assign teams to all players
-function assignTeams(realPlayerId) {
-    // Shuffle all players
-    let allPlayers = shuffleArray([...players]);
+// Assign teams to players
+function assignTeams(socketId) {
+    console.log('Assigning teams...');
     
-    // Find and remove the real player
-    const realPlayerIndex = allPlayers.findIndex(p => p.id === realPlayerId);
-    const realPlayer = allPlayers[realPlayerIndex];
-    allPlayers.splice(realPlayerIndex, 1);
+    // Find the real player
+    const realPlayer = players.find(p => p.id === socketId);
+    if (!realPlayer) {
+        console.error('Real player not found');
+        return null;
+    }
     
-    // Randomly assign the real player to a team (0-3)
+    // Randomly assign the real player to a team
     const realPlayerTeam = Math.floor(Math.random() * 4);
     realPlayer.team = realPlayerTeam;
     
-    // Calculate players per team (should be 549 for each team)
-    const playersPerTeam = Math.floor(allPlayers.length / 4);
+    // Get balanced dummy players for all teams
+    const PLAYERS_PER_TEAM = 25; // 25 players per team = 100 total - 1 real player = 99 dummies
+    const dummyPlayers = DummyPlayerManager.getBalancedDummies(realPlayerTeam, PLAYERS_PER_TEAM);
     
-    // Create team arrays
-    const teams = [[], [], [], []];
-    teams[realPlayerTeam].push(realPlayer);
+    // Update players array with real player and balanced dummies
+    players = [realPlayer, ...dummyPlayers];
     
-    // Distribute remaining players evenly
-    for (let team = 0; team < 4; team++) {
-        const targetCount = team === realPlayerTeam ? playersPerTeam : playersPerTeam + 1;
-        while (teams[team].length < targetCount && allPlayers.length > 0) {
-            const player = allPlayers.pop();
-            player.team = team;
-            teams[team].push(player);
-        }
-    }
+    // Get team members for the real player's team
+    const teamMembers = players.filter(p => p.team === realPlayerTeam);
     
-    // Flatten teams back into players array
-    players = teams.flat();
-    
-    // Return the team info for the real player
     return {
         team: realPlayerTeam,
-        teamMembers: teams[realPlayerTeam],
+        teamMembers: teamMembers,
         teamColor: Object.values(TEAM_COLORS)[realPlayerTeam]
     };
 }
 
-// Initialize dummy players at server start
-initializeDummyPlayers();
+// Optimize player list for display
+function getDisplayPlayers() {
+    // Show all players in the waiting room
+    return players;
+}
 
 io.on('connection', (socket) => {
     console.log('A user connected with ID:', socket.id);
@@ -154,8 +233,17 @@ io.on('connection', (socket) => {
             isDummy: false,
             team: null
         };
-        players.push(player);
-        console.log('Current players:', players);
+        
+        // Clear existing players when a new real player joins
+        players = [player];
+        
+        // Add dummy players to reach 99 (plus 1 real player = 100 total)
+        const PLAYERS_PER_TEAM = 25; // 25 players per team = 100 total - 1 real player = 99 dummies
+        const dummyPlayers = DummyPlayerManager.getBalancedDummies(null, PLAYERS_PER_TEAM);
+        players = [...players, ...dummyPlayers];
+        
+        console.log('Current players:', players.length);
+        // Send the complete player list to all clients
         io.emit('playerList', players);
     });
 
@@ -181,6 +269,7 @@ io.on('connection', (socket) => {
         console.log('User disconnected:', socket.id);
         players = players.filter(player => player.id !== socket.id);
         console.log('Updated players after disconnect:', players);
+        // Send the complete player list to all clients
         io.emit('playerList', players);
     });
 
@@ -264,6 +353,7 @@ io.on('connection', (socket) => {
 // Start server with automatic port finding
 async function startServer() {
     try {
+        // Always try to use port 3000 first
         const port = await findAvailablePort(3000);
         server.listen(port, () => {
             console.log(`\nServer running on port ${port}`);

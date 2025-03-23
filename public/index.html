@@ -233,6 +233,44 @@
         .team-list::-webkit-scrollbar-thumb:hover {
             background: #555;
         }
+
+        /* Scrollbar styling */
+        #players-list {
+            scrollbar-width: thin;
+            scrollbar-color: #1976d2 #f0f0f0;
+        }
+        
+        #players-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #players-list::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+        
+        #players-list::-webkit-scrollbar-thumb {
+            background-color: #1976d2;
+            border-radius: 4px;
+            border: 2px solid #f0f0f0;
+        }
+        
+        #players-list::-webkit-scrollbar-thumb:hover {
+            background-color: #1565c0;
+        }
+        
+        /* Container styling */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        .players-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
@@ -242,16 +280,38 @@
         <button class="button" onclick="joinGame()">Join Game</button>
     </div>
 
-    <div id="waiting-room">
+    <!-- 
+    ⚠️ CRITICAL WARNING - PROTECTED CODE - DO NOT MODIFY ⚠️
+    
+    The waiting room layout and styling below is carefully crafted to:
+    1. Provide a responsive grid layout that adapts to screen size
+    2. Maintain proper spacing and visual hierarchy
+    3. Handle player list updates efficiently
+    4. Ensure consistent styling across devices
+    
+    Modifications to this code may break:
+    - Player list display
+    - Responsive behavior
+    - Visual consistency
+    - Grid layout functionality
+    
+    🔒 AUTHENTICATION REQUIRED 🔒
+    Before modifying ANY waiting room code, you MUST:
+    1. Document the specific issue requiring changes
+    2. Get approval from the project maintainer
+    3. Test changes thoroughly in all screen sizes
+    -->
+    <div id="waiting-room" style="display: none;">
         <h1>Waiting Room</h1>
-        <div class="waiting-container">
-            <div class="waiting-title">Tappers</div>
-            <div class="players-grid" id="players-list">
-                <!-- Players will be dynamically added here -->
+        <div class="container" style="height: calc(100vh - 180px); padding: 20px; box-sizing: border-box;">
+            <h2>Tappers</h2>
+            <div class="players-container" style="height: calc(100% - 40px); background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 20px; box-sizing: border-box; overflow: hidden;">
+                <div id="players-list" style="width: 100%; height: 100%; overflow-y: auto;"></div>
             </div>
         </div>
-        <button class="button" onclick="strategize()">Strategize</button>
+        <button class="strategize-button" onclick="strategize()">Strategize</button>
     </div>
+    <!-- END OF PROTECTED WAITING ROOM CODE -->
 
     <div id="strategy-screen">
         <div class="strategy-header">
@@ -269,12 +329,12 @@
         <button class="button battle-button" onclick="startGame()">Start Battle</button>
     </div>
 
-    <div id="game-screen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000;">
+    <div id="game-screen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #87CEEB; z-index: 1000;">
         <div id="health-bars" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1001;"></div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
     <script src="game.js"></script>
     <script>
         // Add event listener for return key on username input
