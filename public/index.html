@@ -345,6 +345,46 @@
             .health-bar-container {
                 transform: scale(1.2);
             }
+
+            /* Camera controls styles for mobile */
+            #camera-controls {
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                background: rgba(255, 255, 255, 0.95);
+                padding: 10px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 1002;
+                max-height: 40vh;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            #camera-controls h3 {
+                font-size: 16px;
+                margin: 0 0 5px 0;
+            }
+
+            #camera-controls label {
+                font-size: 14px;
+            }
+
+            #camera-controls input[type="range"] {
+                height: 30px;
+            }
+
+            #camera-controls input[type="checkbox"] {
+                width: 24px;
+                height: 24px;
+            }
+
+            #camera-controls span {
+                font-size: 12px;
+            }
         }
 
         .team-list {
@@ -422,6 +462,71 @@
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
+
+        /* Desktop camera controls styles */
+        #camera-controls {
+            position: fixed;
+            top: 0;
+            right: 0;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 0 0 0 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            transition: transform 0.3s ease-in-out;
+            transform-origin: top;
+        }
+
+        #camera-controls.collapsed {
+            transform: translateY(-100%);
+        }
+
+        #camera-controls-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            cursor: pointer;
+            padding: 8px;
+            background-color: rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            transition: background-color 0.2s ease;
+        }
+
+        #camera-controls-header:hover {
+            background-color: rgba(0, 0, 0, 0.15);
+        }
+
+        #camera-controls-header h3 {
+            margin: 0;
+            font-size: 16px;
+            color: #333;
+            flex-grow: 1;
+        }
+
+        #camera-controls-header::after {
+            content: '▼';
+            font-size: 20px;
+            color: #333;
+            transition: transform 0.3s ease;
+        }
+
+        #camera-controls.collapsed #camera-controls-header::after {
+            transform: rotate(180deg);
+        }
+
+        #camera-controls-content {
+            transition: max-height 0.3s ease-in-out;
+            overflow: hidden;
+        }
+
+        #camera-controls.collapsed #camera-controls-content {
+            max-height: 0;
+        }
+
+        #camera-controls:not(.collapsed) #camera-controls-content {
+            max-height: 500px;
+        }
     </style>
 </head>
 <body>
@@ -484,6 +589,32 @@
     </div>
 
     <div id="game-screen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #87CEEB; z-index: 1000;">
+        <div id="camera-controls">
+            <div id="camera-controls-header">
+                <h3>Camera Controls</h3>
+            </div>
+            <div id="camera-controls-content">
+                <div class="control-group">
+                    <label for="orthographic-toggle">Orthographic View</label>
+                    <input type="checkbox" id="orthographic-toggle">
+                </div>
+                <div class="control-group">
+                    <label for="fov-slider">Field of View</label>
+                    <input type="range" id="fov-slider" min="30" max="120" value="75">
+                    <span id="fov-value">75°</span>
+                </div>
+                <div class="control-group">
+                    <label for="zoom-slider">Zoom</label>
+                    <input type="range" id="zoom-slider" min="0.5" max="2" step="0.1" value="1">
+                    <span id="zoom-value">1.0x</span>
+                </div>
+                <div class="control-group">
+                    <label for="aspect-slider">Aspect Ratio</label>
+                    <input type="range" id="aspect-slider" min="0.5" max="2" step="0.1" value="1">
+                    <span id="aspect-value">1.0</span>
+                </div>
+            </div>
+        </div>
         <div id="health-bars" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1001;"></div>
     </div>
 

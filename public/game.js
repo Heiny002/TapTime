@@ -60,7 +60,7 @@ const CameraManager = {
     minY: 5,
     maxY: 15,
     minDistance: 10,
-    maxDistance: 30, // Increased max distance for zoom out
+    maxDistance: 30,
     isTransitioning: false,
     zoomLevel: 1,
     minZoom: 0.7,
@@ -71,6 +71,81 @@ const CameraManager = {
         this.targetPosition.copy(initialPos);
         camera.position.copy(initialPos);
         this.zoomLevel = 1;
+        this.setupControls();
+    },
+    
+    setupControls() {
+        // Orthographic toggle
+        const orthographicToggle = document.getElementById('orthographic-toggle');
+        if (orthographicToggle) {
+            orthographicToggle.addEventListener('change', (e) => {
+                const isOrthographic = e.target.checked;
+                const currentFov = camera.fov;
+                const currentAspect = camera.aspect;
+                const currentNear = camera.near;
+                const currentFar = camera.far;
+                
+                if (isOrthographic) {
+                    const frustumSize = 20;
+                    camera = new THREE.OrthographicCamera(
+                        frustumSize * currentAspect / -2,
+                        frustumSize * currentAspect / 2,
+                        frustumSize / 2,
+                        frustumSize / -2,
+                        currentNear,
+                        currentFar
+                    );
+                } else {
+                    camera = new THREE.PerspectiveCamera(
+                        currentFov,
+                        currentAspect,
+                        currentNear,
+                        currentFar
+                    );
+                }
+                
+                camera.position.copy(this.currentPosition);
+                camera.lookAt(0, 1, 0);
+                camera.updateProjectionMatrix();
+            });
+        }
+        
+        // FOV slider
+        const fovSlider = document.getElementById('fov-slider');
+        const fovValue = document.getElementById('fov-value');
+        if (fovSlider && fovValue) {
+            fovSlider.addEventListener('input', (e) => {
+                const value = e.target.value;
+                fovValue.textContent = `${value}°`;
+                if (camera instanceof THREE.PerspectiveCamera) {
+                    camera.fov = parseFloat(value);
+                    camera.updateProjectionMatrix();
+                }
+            });
+        }
+        
+        // Zoom slider
+        const zoomSlider = document.getElementById('zoom-slider');
+        const zoomValue = document.getElementById('zoom-value');
+        if (zoomSlider && zoomValue) {
+            zoomSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                zoomValue.textContent = `${value.toFixed(1)}x`;
+                this.setZoom(value - this.zoomLevel);
+            });
+        }
+        
+        // Aspect ratio slider
+        const aspectSlider = document.getElementById('aspect-slider');
+        const aspectValue = document.getElementById('aspect-value');
+        if (aspectSlider && aspectValue) {
+            aspectSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                aspectValue.textContent = value.toFixed(1);
+                camera.aspect = value;
+                camera.updateProjectionMatrix();
+            });
+        }
     },
     
     setTargetPosition(pos) {
@@ -454,8 +529,14 @@ function init(players) {
             return;
         }
         
+        // Remove all children except camera controls and health bars
         while (gameScreen.firstChild) {
-            gameScreen.removeChild(gameScreen.firstChild);
+            const child = gameScreen.firstChild;
+            if (child.id !== 'camera-controls' && child.id !== 'health-bars') {
+                gameScreen.removeChild(child);
+            } else {
+                break;
+            }
         }
         
         // Add renderer to game screen
@@ -557,6 +638,67 @@ function init(players) {
         
         // Add mouse wheel zoom
         setupMouseControls();
+        
+        // Initialize camera controls
+        const orthographicToggle = document.getElementById('orthographic-toggle');
+        const fovSlider = document.getElementById('fov-slider');
+        const zoomSlider = document.getElementById('zoom-slider');
+        const aspectSlider = document.getElementById('aspect-slider');
+        
+        if (orthographicToggle) {
+            orthographicToggle.addEventListener('change', (e) => {
+                const isOrthographic = e.target.checked;
+                const currentFov = camera.fov;
+                const currentZoom = camera.zoom;
+                
+                if (isOrthographic) {
+                    const frustumSize = 10;
+                    camera = new THREE.OrthographicCamera(
+                        frustumSize * aspectRatio / -2,
+                        frustumSize * aspectRatio / 2,
+                        frustumSize / 2,
+                        frustumSize / -2,
+                        0.1,
+                        1000
+                    );
+                } else {
+                    camera = new THREE.PerspectiveCamera(currentFov, aspectRatio, 0.1, 1000);
+                }
+                
+                camera.position.copy(CameraManager.currentPosition);
+                camera.lookAt(0, 0, 0);
+                camera.zoom = currentZoom;
+                camera.updateProjectionMatrix();
+            });
+        }
+        
+        if (fovSlider) {
+            fovSlider.addEventListener('input', (e) => {
+                if (!orthographicToggle.checked) {
+                    camera.fov = parseFloat(e.target.value);
+                    camera.updateProjectionMatrix();
+                    document.getElementById('fov-value').textContent = `${e.target.value}°`;
+                }
+            });
+        }
+        
+        if (zoomSlider) {
+            zoomSlider.addEventListener('input', (e) => {
+                const zoomValue = parseFloat(e.target.value);
+                camera.zoom = zoomValue;
+                camera.updateProjectionMatrix();
+                document.getElementById('zoom-value').textContent = `${zoomValue.toFixed(1)}x`;
+            });
+        }
+        
+        if (aspectSlider) {
+            aspectSlider.addEventListener('input', (e) => {
+                const aspectValue = parseFloat(e.target.value);
+                camera.aspect = aspectValue;
+                camera.updateProjectionMatrix();
+                document.getElementById('aspect-value').textContent = aspectValue.toFixed(1);
+            });
+        }
         
         console.log('Game scene initialized successfully');
     } catch (error) {
@@ -1065,7 +1207,23 @@ function setupTouchEvents() {
         );
     }
 
+    function isTouchOnControls(touch) {
+        const cameraControls = document.getElementById('camera-controls');
+        if (!cameraControls) return false;
+        
+        const rect = cameraControls.getBoundingClientRect();
+        return touch.clientX >= rect.left && 
+               touch.clientX <= rect.right && 
+               touch.clientY >= rect.top && 
+               touch.clientY <= rect.bottom;
+    }
+
     gameScreen.addEventListener('touchstart', (event) => {
+        // Don't prevent default if touching camera controls
+        if (event.touches.length === 1 && isTouchOnControls(event.touches[0])) {
+            return;
+        }
+        
         event.preventDefault();
         if (event.touches.length === 2) {
             // Start of pinch - store initial distance
@@ -1078,6 +1236,11 @@ function setupTouchEvents() {
     }, { passive: false });
 
     gameScreen.addEventListener('touchmove', (event) => {
+        // Don't prevent default if touching camera controls
+        if (event.touches.length === 1 && isTouchOnControls(event.touches[0])) {
+            return;
+        }
+        
         event.preventDefault();
         if (event.touches.length === 2) {
             // Handle pinch zoom
@@ -1089,6 +1252,11 @@ function setupTouchEvents() {
     }, { passive: false });
 
     gameScreen.addEventListener('touchend', (event) => {
+        // Don't prevent default if touching camera controls
+        if (event.changedTouches.length === 1 && isTouchOnControls(event.changedTouches[0])) {
+            return;
+        }
+        
         event.preventDefault();
         if (event.touches.length === 0 && Date.now() - touchStartTime < 200) {
             // Handle tap for castle selection
@@ -1138,4 +1306,17 @@ function setupMouseControls() {
         const delta = event.deltaY * -0.001; // Adjust sensitivity
         CameraManager.setZoom(delta);
     }, { passive: false });
+}
+
+function setupCameraControls() {
+    const cameraControls = document.getElementById('camera-controls');
+    const cameraControlsToggle = document.getElementById('camera-controls-toggle');
+    const cameraControlsHeader = document.getElementById('camera-controls-header');
+
+    // Toggle camera controls panel
+    cameraControlsHeader.addEventListener('click', () => {
+        cameraControls.classList.toggle('collapsed');
+    });
+
+    // ... rest of the existing camera controls setup code ...
 } 
